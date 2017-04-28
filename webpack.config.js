@@ -6,6 +6,7 @@ var autoprefixer = require('autoprefixer');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var CopyWebpackPlugin = require('copy-webpack-plugin');
+var CompressionPlugin = require('compression-webpack-plugin');
 
 /**
  * Env
@@ -22,6 +23,7 @@ module.exports = function makeWebpackConfig () {
    * This is the object where all configuration gets set
    */
   var config = {};
+  const proxy = 'localhost:3000';
 
   /**
    * Entry
@@ -88,6 +90,15 @@ module.exports = function makeWebpackConfig () {
       loader: 'babel-loader',
       exclude: /node_modules/
     }, {
+      // JS LOADER
+      // Reference: https://github.com/babel/babel-loader
+      // Transpile .js files using babel-loader
+      // Compiles ES6 and ES7 into ES5 code
+      test: /\.json$/,
+      loader: 'json-loader',
+      exclude: /node_modules/
+    },
+     {
       // CSS LOADER
       // Reference: https://github.com/webpack/css-loader
       // Allow loading css through js
@@ -100,7 +111,7 @@ module.exports = function makeWebpackConfig () {
       //
       // Reference: https://github.com/webpack/style-loader
       // Use style-loader in development.
-      loader: isTest ? 'null' : ExtractTextPlugin.extract('style-loader', 'css-loader?sourceMap!postcss-loader')
+      loader: ExtractTextPlugin.extract('style-loader', 'css-loader')
     }, {
       // ASSET LOADER
       // Reference: https://github.com/webpack/file-loader
@@ -109,6 +120,9 @@ module.exports = function makeWebpackConfig () {
       // Pass along the updated reference to your code
       // You can add here any file extension you want to get copied to your output
       test: /\.(png|jpg|jpeg|gif|svg|woff|woff2|ttf|eot)$/,
+      loader: 'file'
+    }, {
+      test: /\.(mp4|webm|ogg)$/,
       loader: 'file'
     }, {
       // HTML LOADER
@@ -158,8 +172,9 @@ module.exports = function makeWebpackConfig () {
     // Render index.html
     config.plugins.push(
       new HtmlWebpackPlugin({
-        template: './src/public/index.html',
-        inject: 'body'
+        template: './index.tpl.html',
+        inject: 'body',
+        filename: 'index.html'
       }),
 
       // Reference: https://github.com/webpack/extract-text-webpack-plugin
@@ -188,7 +203,14 @@ module.exports = function makeWebpackConfig () {
       // Reference: https://github.com/kevlened/copy-webpack-plugin
       new CopyWebpackPlugin([{
         from: __dirname + '/src/public'
-      }])
+      }]),
+      new CompressionPlugin({
+        asset: "[path].gz[query]",
+        algorithm: "gzip",
+        test: /\.js$|\.css$|\.html$/,
+        threshold: 10240,
+        minRatio: 0.8
+      })
     )
   }
 
@@ -199,7 +221,10 @@ module.exports = function makeWebpackConfig () {
    */
   config.devServer = {
     contentBase: './src/public',
-    stats: 'minimal'
+    stats: 'minimal',
+    proxy: {
+      '/api/*': `http://${proxy}`
+    }
   };
 
   return config;
